@@ -5,8 +5,10 @@ const Goal = ({ goal, handleGoalClick }) => {
 	const className = goal.get("clicked") ? "Goal-Button" : "";
 	return (
 		<div>
-			<button type="button" className={className} onClick={() => (handleGoalClick(goal.get("key")))}>{goal.get("name")}</button>
+			<button type="button" className={className} onClick={() => (handleGoalClick(goal))}>{goal.get("name")}</button>
+			{goal.get("state")}
 		</div>
+		
 	);
 };
 
