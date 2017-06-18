@@ -3,16 +3,20 @@ import logo from './logo.svg';
 import './App.css';
 import Goals from './Goals.js';
 import { List, Map } from 'immutable';
+import axios from 'axios';
 
-const MakeGoal = (name, key) => Map({
+const MakeGoal = (name, goalid, lastDone) => Map({
 	"name": name,
-	"key": key,
-	// unclicked -> clickPendingConfirmation -> clickConfirmed
+	"goalid": goalid,
+	"lastDone": lastDone,
+	//     /---------------------------------------------\
+	//    v                                              |
+	// waitingForClick -> clickPendingConfirmation -> clickConfirmed
 	//                          ^          |
 	//                          |          -----> clickConfirmFailed
 	//                          |                         |
 	//                          ---------------------------
-	"state": "unclicked"
+	"state": "waitingForClick",
 });
 
 class App extends Component {
@@ -20,16 +24,44 @@ class App extends Component {
 	constructor(props) {
 		super(props);
 		this.state = {
-			goals: List([MakeGoal("first", 1), MakeGoal("second", 2)])
+			goals: List([])
 		};
 		this.handleGoalClick = this.handleGoalClick.bind(this);
 		this.updateGoal = this.updateGoal.bind(this);
+		this.updateGoalsFromApi = this.updateGoalsFromApi.bind(this);
+		this.updateGoalFromApi = this.updateGoalFromApi.bind(this);
+	}
+
+	updateGoalsFromApi(res) {
+		this.setState(() => ({
+			goals: List(res.data.goals.map(({ name, goalid, lastDone }) =>
+				MakeGoal(name, goalid, lastDone)))
+		}));
+	}
+
+	updateGoalFromApi(res) {
+		const goalFromApi = res.data;
+		this.setState(({ goals }) => ({
+			goals: goals.map(g => {
+				if (g.get("goalid") === goalFromApi.goalid) {
+					return g
+						.update("state", () => "clickConfirmed")
+						.update("lastDone", () => goalFromApi.lastDone);
+				}
+				return g;
+			})
+		}));
+	}
+
+	componentDidMount() {
+		axios.get('/goals/user/1')
+			.then(this.updateGoalsFromApi);
 	}
 
 	updateGoal(goal, state) {
 		this.setState(({ goals }) => ({
 			goals: goals.map(g => {
-				if (g.get("key") === goal.get("key")) {
+				if (g.get("goalid") === goal.get("goalid")) {
 					return g.update("state", () => state)
 				}
 				return g;
@@ -39,9 +71,15 @@ class App extends Component {
 
 	handleGoalClick(goal) {
 		const state = goal.get("state");
-		if (state === "unclicked" || state === "clickConfirmFailed") {
+		if (state !== "clickPendingConfirmation") {
 			this.updateGoal(goal, "clickPendingConfirmation")
-			setTimeout(() => { this.updateGoal(goal, "clickConfirmed"); }, 1000);
+			axios.post(`/goal/${goal.get("goalid")}`)
+				.then((res) => {
+					this.updateGoalFromApi(res);
+					setTimeout(() => {
+						this.updateGoal(goal, "waitingForClick");
+					}, 1000);
+				});
 		}
 	}
 

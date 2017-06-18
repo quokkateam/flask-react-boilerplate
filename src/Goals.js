@@ -2,21 +2,25 @@ import React from 'react';
 import './Goals.css'
 
 const Goal = ({ goal, handleGoalClick }) => {
-	const className = goal.get("clicked") ? "Goal-Button" : "";
 	return (
 		<div>
-			<button type="button" className={className} onClick={() => (handleGoalClick(goal))}>{goal.get("name")}</button>
+			<button type="button" onClick={() => (handleGoalClick(goal))}>{goal.get("name")}</button>
+			{"  "} 
 			{goal.get("state")}
+			{"  "} 
+			{goal.get("lastDone")}
 		</div>
 		
 	);
 };
 
-const Goals = ({ goals, handleGoalClick }) => (
-	<div className="Goals">
-		<h2>Goals</h2>
-		{goals.map(goal => <Goal goal={goal} key={goal.get("key")} handleGoalClick={handleGoalClick}/>)}
-	</div>
-);
+const Goals = ({ goals, handleGoalClick }) => {
+	return (
+		<div className="Goals">
+			<h2>Goals</h2>
+			{goals.map(goal => <Goal goal={goal} key={goal.get("goalid")} handleGoalClick={handleGoalClick} />)}
+		</div>
+	);
+}
 
 export default Goals;

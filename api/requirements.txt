@@ -1,0 +1,15 @@
+aniso8601==1.2.1
+click==6.7
+Flask==0.12.2
+flask-restplus==0.10.1
+Flask-SQLAlchemy==2.2
+functools32==3.2.3.post2
+itsdangerous==0.24
+Jinja2==2.9.6
+jsonschema==2.6.0
+MarkupSafe==1.0
+python-dateutil==2.6.0
+pytz==2017.2
+six==1.10.0
+SQLAlchemy==1.1.10
+Werkzeug==0.12.2
