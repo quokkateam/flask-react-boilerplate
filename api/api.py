@@ -1,69 +1,157 @@
 import datetime
 
-from flask import Flask
+from flask import Flask, request
 from flask_restplus import Resource, Api, fields
+from flask_sqlalchemy import SQLAlchemy
 
 app = Flask(__name__)
+
+app.config['SQLALCHEMY_DATABASE_URI'] = 'sqlite:////tmp/test.db'
+db = SQLAlchemy(app)
+
 api = Api(app)
 
-goal_model = api.model(
-    'Goal', {
-        'name': fields.String,
-        'goalid': fields.Integer,
-        'lastDone': fields.DateTime,
-    }
-)
+# Database Models
 
-goals_model = api.model(
-    'Goals', {
-        'goals': fields.List(fields.Nested(goal_model))
-    }
-)
+class User(db.Model):
+    userid = db.Column(db.Integer, primary_key=True)
+    username = db.Column(db.String(80), unique=True)
+    email = db.Column(db.String(120), unique=True)
 
-goals = {
-    1: {'name': 'First daily goal',
-        'goalid': 1,
-        'lastDone': '2017-06-17T17:26:07.528Z', },
-    2: {'name': 'Second daily goal',
-        'goalid': 2,
-        'lastDone': '2017-06-17T17:26:07.528Z', },
-}
+    write_fields = {'username': fields.String,
+                    'email': fields.String,
+                    }
+    read_fields = {'userid': fields.Integer,
+                   'username': fields.String,
+                   'email': fields.String,
+                   }
 
-@api.route('/goals/user/<int:userid>')
-class UserById(Resource):
+    def __repr__(self):
+        return '<User %r>' % self.userid
 
-    @api.doc(model=goals_model)
-    @api.doc(responses={
-        200: 'Success',
-        404: 'User not found',
-    })
+
+class Goal(db.Model):
+    goalid = db.Column(db.Integer, primary_key=True)
+    name = db.Column(db.String(80))
+    lastDone = db.Column(db.DateTime)
+    userid = db.Column(db.Integer, db.ForeignKey('user.userid'))
+    user = db.relationship('User', backref=db.backref('goals', lazy='dynamic'))
+
+    write_fields = {'name': fields.String}
+    read_fields = {'name': fields.String,
+                   'goalid': fields.Integer,
+                   'lastDone': fields.DateTime,
+                   'userid': fields.Integer,
+                   }
+
+    def __init__(self, user):
+        self.user = user
+
+    def __repr__(self):
+        return '<Goal %r>' % self.goalid
+
+def update_obj_with(obj, json, keys):
+    for key in keys:
+        if key in json:
+            setattr(obj, key, json[key])
+
+
+# Endpoints
+
+PostUserRequest = api.model('PostUserRequest', User.write_fields)
+PostUserResponse = api.model('PostUserResponse', User.read_fields)
+GetUserResponse = api.model('GetUserResponse', User.read_fields)
+PutUserRequest = api.model('PutUserRequest', User.write_fields)
+PutUserResponse = api.model('PutUserResponse', User.read_fields)
+
+@api.route('/user')
+class CreateUserEndpoint(Resource):
+
+    @api.expect(PostUserRequest)
+    @api.doc(model=PostUserResponse)
+    @api.marshal_with(PostUserResponse)
+    def post(self):
+        # TODO do something more graceful when integrity constraints are violated.
+        json = request.json
+        user = User()
+        update_obj_with(user, json, User.write_fields.iterkeys())
+        db.session.add(user)
+        db.session.commit()
+        return user
+
+
+@api.route('/user/<int:userid>')
+class UserEndpoint(Resource):
+
+    @api.doc(model=GetUserResponse)
+    @api.marshal_with(GetUserResponse)
     def get(self, userid):
-        return {'goals': goals.values()}
+        user = User.query.filter_by(userid=userid).first_or_404()
+        return user
+
+    @api.expect(PutUserRequest)
+    @api.doc(model=PutUserResponse)
+    @api.marshal_with(PutUserResponse)
+    def put(self, userid):
+        # TODO do something more graceful when integrity constraints are violated.
+        user = User.query.filter_by(userid=userid).first_or_404()
+        update_obj_with(user, request.json, User.write_fields.iterkeys())
+        db.session.add(user)
+        db.session.commit()
+        return user
+
+GetGoalResponse = api.model('GetGoalResponse', Goal.read_fields)
+PutGoalRequest = api.model('PutGoalRequest', Goal.write_fields)
+PutGoalResponse = api.model('PutGoalResponse', Goal.read_fields)
+GoalPostRequest = api.model('GoalPostRequest', Goal.write_fields)
+GoalPostResponse = api.model('GoalPostResponse', Goal.read_fields)
+GoalsByUserResponse = api.model('GoalsByUserResponse', {
+    'goals': fields.List(fields.Nested(GetGoalResponse))
+})
 
 @api.route('/goal/<int:goalid>')
-class GoalById(Resource):
+class GoalEndpoint(Resource):
 
-    @api.doc(model=goal_model)
-    @api.doc(responses={
-        200: 'Success',
-        404: 'Goal not found',
-    })
+    @api.doc(model=GetGoalResponse)
+    @api.marshal_with(GetGoalResponse)
     def get(self, goalid):
-        try:
-            return goals[goalid]
-        except KeyError:
-            return {'message': 'Not Found'}, 404
+        goal = Goal.query.filter_by(goalid=goalid).first_or_404()
+        return goal
 
-    @api.doc(model=goal_model)
-    def post(self, goalid):
-        """
-        Mark this goal as completed at the current time.
-        """
-        try:
-            goals[goalid]['lastDone'] = datetime.datetime.now().isoformat()
-            return goals[goalid]
-        except KeyError:
-            return {'message': 'Not Found'}, 404
+    @api.expect(PutGoalRequest)
+    @api.doc(model=PutGoalResponse)
+    @api.marshal_with(PutGoalResponse)
+    def put(self, goalid):
+        # TODO do something more graceful when integrity constraints are violated.
+        goal = Goal.query.filter_by(goalid=goalid).first_or_404()
+        for field in Goal.write_fields:
+            setattr(goal, field, request.json[field])
+        db.session.add(goal)
+        db.session.commit()
+        return goal
+
+
+@api.route('/goals/user/<int:userid>')
+class GoalsByUser(Resource):
+
+    @api.doc(model=GoalsByUserResponse)
+    @api.marshal_with(GoalsByUserResponse)
+    def get(self, userid):
+        user = User.query.filter_by(userid=userid).first_or_404()
+        goals = user.goals.all()
+        return {'goals': goals}
+
+    @api.expect(GoalPostRequest)
+    @api.doc(model=GoalPostResponse)
+    @api.marshal_with(GoalPostResponse)
+    def post(self, userid):
+        user = User.query.filter_by(userid=userid).first_or_404()
+        goal = Goal(user=user)
+        update_obj_with(goal, request.json, Goal.write_fields.iterkeys())
+        db.session.add(goal)
+        db.session.commit()
+        return goal
+
 
 if __name__ == '__main__':
     app.run(debug=True)
