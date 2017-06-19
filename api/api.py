@@ -64,7 +64,7 @@ GetUserResponse = api.model('GetUserResponse', User.read_fields)
 PutUserRequest = api.model('PutUserRequest', User.write_fields)
 PutUserResponse = api.model('PutUserResponse', User.read_fields)
 
-@api.route('/user')
+@api.route('/api/user')
 class CreateUserEndpoint(Resource):
 
     @api.expect(PostUserRequest)
@@ -80,7 +80,7 @@ class CreateUserEndpoint(Resource):
         return user
 
 
-@api.route('/user/<int:userid>')
+@api.route('/api/user/<int:userid>')
 class UserEndpoint(Resource):
 
     @api.doc(model=GetUserResponse)
@@ -105,11 +105,11 @@ PutGoalRequest = api.model('PutGoalRequest', Goal.write_fields)
 PutGoalResponse = api.model('PutGoalResponse', Goal.read_fields)
 GoalPostRequest = api.model('GoalPostRequest', Goal.write_fields)
 GoalPostResponse = api.model('GoalPostResponse', Goal.read_fields)
-GoalsByUserResponse = api.model('GoalsByUserResponse', {
+UserGoalsResponse = api.model('UserGoalsResponse', {
     'goals': fields.List(fields.Nested(GetGoalResponse))
 })
 
-@api.route('/goal/<int:goalid>')
+@api.route('/api/goal/<int:goalid>')
 class GoalEndpoint(Resource):
 
     @api.doc(model=GetGoalResponse)
@@ -131,15 +131,28 @@ class GoalEndpoint(Resource):
         return goal
 
 
-@api.route('/goals/user/<int:userid>')
-class GoalsByUser(Resource):
+@api.route('/api/goal/<int:goalid>/markdone')
+class MarkDoneEndpoint(Resource):
 
-    @api.doc(model=GoalsByUserResponse)
-    @api.marshal_with(GoalsByUserResponse)
+    def post(self, goalid):
+    	db.session.query(Goal).filter(Goal.goalid == goalid).update(
+            {'lastDone': datetime.datetime.now()})
+        db.session.commit()
+
+
+@api.route('/api/user/<int:userid>/goals')
+class UserGoals(Resource):
+
+    @api.doc(model=UserGoalsResponse)
+    @api.marshal_with(UserGoalsResponse)
     def get(self, userid):
         user = User.query.filter_by(userid=userid).first_or_404()
         goals = user.goals.all()
         return {'goals': goals}
+
+
+@api.route('/api/user/<int:userid>/goal')
+class UserGoal(Resource):
 
     @api.expect(GoalPostRequest)
     @api.doc(model=GoalPostResponse)
