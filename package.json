@@ -9,6 +9,7 @@
     "react-dom": "^15.6.1"
   },
   "devDependencies": {
+    "moxios": "^0.4.0",
     "react-scripts": "1.0.7"
   },
   "scripts": {
