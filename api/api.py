@@ -2,53 +2,29 @@ import datetime
 
 from flask import Flask, request
 from flask_restplus import Resource, Api, fields
-from flask_sqlalchemy import SQLAlchemy
 
-app = Flask(__name__)
+from models import db, User, Goal
 
-app.config['SQLALCHEMY_DATABASE_URI'] = 'sqlite:////tmp/test.db'
-db = SQLAlchemy(app)
+PROD_CONFIG = {
+    'SQLALCHEMY_DATABASE_URI': 'sqlite:////tmp/test.db',
+    'SQLALCHEMY_TRACK_MODIFICATIONS': False,
+}
 
-api = Api(app)
-
-# Database Models
-
-class User(db.Model):
-    userid = db.Column(db.Integer, primary_key=True)
-    username = db.Column(db.String(80), unique=True)
-    email = db.Column(db.String(120), unique=True)
-
-    write_fields = {'username': fields.String,
-                    'email': fields.String,
-                    }
-    read_fields = {'userid': fields.Integer,
-                   'username': fields.String,
-                   'email': fields.String,
-                   }
-
-    def __repr__(self):
-        return '<User %r>' % self.userid
+api = Api(validate=True)
 
 
-class Goal(db.Model):
-    goalid = db.Column(db.Integer, primary_key=True)
-    name = db.Column(db.String(80))
-    lastDone = db.Column(db.DateTime)
-    userid = db.Column(db.Integer, db.ForeignKey('user.userid'))
-    user = db.relationship('User', backref=db.backref('goals', lazy='dynamic'))
+def set_config(app, config_dict):
+    for key, val in config_dict.iteritems():
+        app.config[key] = val
 
-    write_fields = {'name': fields.String}
-    read_fields = {'name': fields.String,
-                   'goalid': fields.Integer,
-                   'lastDone': fields.DateTime,
-                   'userid': fields.Integer,
-                   }
 
-    def __init__(self, user):
-        self.user = user
+def create_app(config):
+    app = Flask(__name__)
+    set_config(app, config)
+    db.init_app(app)
+    api.init_app(app)
+    return app
 
-    def __repr__(self):
-        return '<Goal %r>' % self.goalid
 
 def update_obj_with(obj, json, keys):
     for key in keys:
@@ -63,6 +39,7 @@ PostUserResponse = api.model('PostUserResponse', User.read_fields)
 GetUserResponse = api.model('GetUserResponse', User.read_fields)
 PutUserRequest = api.model('PutUserRequest', User.write_fields)
 PutUserResponse = api.model('PutUserResponse', User.read_fields)
+
 
 @api.route('/api/user')
 class CreateUserEndpoint(Resource):
@@ -100,6 +77,7 @@ class UserEndpoint(Resource):
         db.session.commit()
         return user
 
+
 GetGoalResponse = api.model('GetGoalResponse', Goal.read_fields)
 PutGoalRequest = api.model('PutGoalRequest', Goal.write_fields)
 PutGoalResponse = api.model('PutGoalResponse', Goal.read_fields)
@@ -108,6 +86,7 @@ GoalPostResponse = api.model('GoalPostResponse', Goal.read_fields)
 UserGoalsResponse = api.model('UserGoalsResponse', {
     'goals': fields.List(fields.Nested(GetGoalResponse))
 })
+
 
 @api.route('/api/goal/<int:goalid>')
 class GoalEndpoint(Resource):
@@ -131,12 +110,16 @@ class GoalEndpoint(Resource):
         return goal
 
 
+def get_now():
+    return datetime.datetime.now()
+
+
 @api.route('/api/goal/<int:goalid>/markdone')
 class MarkDoneEndpoint(Resource):
 
     def post(self, goalid):
     	db.session.query(Goal).filter(Goal.goalid == goalid).update(
-            {'lastDone': datetime.datetime.now()})
+            {'lastDone': get_now()})
         db.session.commit()
 
 
@@ -167,4 +150,5 @@ class UserGoal(Resource):
 
 
 if __name__ == '__main__':
+    app = create_app(PROD_CONFIG)
     app.run(debug=True)

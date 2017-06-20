@@ -1,3 +1,11 @@
 {
-    "python.pythonPath": "${workspaceRoot}/api/.venv/bin/python"
+    "python.pythonPath": "${workspaceRoot}/api/.venv/bin/python",
+    "python.unitTest.unittestArgs": [
+        "-v",
+        "-s",
+        "./api",
+        "-p",
+        "*_test.py"
+    ],
+    "python.unitTest.unittestEnabled": true
 }
