@@ -5,11 +5,22 @@ language: python
 python:
   - 2.7
 
+node_js:
+  - 4
+  - 6
+
+cache:
+  pip: true
+  directories:
+    - node_modules
+
 install:
   - pip install -r api/requirements.txt -r api/dev-requirements.txt
 
 script:
   - coverage run api/api_test.py
+  - npm test
+  - npm run build
 
 after_success:
   - codecov

@@ -8,6 +8,10 @@
     "react": "^15.6.1",
     "react-dom": "^15.6.1"
   },
+  "jest": {
+    "coverageDirectory": "./coverage/",
+    "collectCoverage": true
+  },
   "devDependencies": {
     "moxios": "^0.4.0",
     "react-scripts": "1.0.7"
