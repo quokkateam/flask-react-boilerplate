@@ -111,7 +111,10 @@ class EndpointsTest(TestCase):
             goalid=1,
             lastDone=None,
             userid=1,))
-        self.requestHelper(method='POST', path='/api/goal/1/markdone')
+        response = self.requestHelper(method='POST', path='/api/goal/1/markdone')
+        self.assertEquals(response.json, dict(
+            goalid=1,
+            lastDone=get_now_function().isoformat(),))
         response = self.requestHelper(path='/api/goal/1')
         self.assertEquals(response.json, dict(
             name='brush your teeth',

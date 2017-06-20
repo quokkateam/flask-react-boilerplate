@@ -54,7 +54,7 @@ class App extends Component {
 	}
 
 	componentDidMount() {
-		axios.get('/goals/user/1')
+        axios.get('/api/user/1/goals')
 			.then(this.updateGoalsFromApi);
 	}
 
@@ -73,9 +73,12 @@ class App extends Component {
 		const state = goal.get("state");
 		if (state !== "clickPendingConfirmation") {
 			this.updateGoal(goal, "clickPendingConfirmation")
-			axios.post(`/goal/${goal.get("goalid")}`)
+			axios.post(`/api/goal/${goal.get("goalid")}/markdone`)
 				.then((res) => {
-					this.updateGoalFromApi(res);
+					axios.get(`/api/goal/${goal.get("goalid")}`)
+						.then((res) => {
+							this.updateGoalFromApi(res);
+						})
 					setTimeout(() => {
 						this.updateGoal(goal, "waitingForClick");
 					}, 1000);
