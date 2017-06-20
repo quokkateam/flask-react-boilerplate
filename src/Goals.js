@@ -2,13 +2,19 @@ import React from 'react';
 import './Goals.css'
 
 const Goal = ({ goal, handleGoalClick }) => {
+	const now = new Date();
+	const lastDone = new Date(goal.get("lastDone"));
+	const doneToday = now.getDate() === lastDone.getDate()
+		&& now.getMonth() === lastDone.getMonth() && now.getFullYear() === lastDone.getFullYear();
 	return (
 		<div>
-			<button type="button" onClick={() => (handleGoalClick(goal))}>{goal.get("name")}</button>
+			<button type="button" className="Goal-Button" onClick={() => (handleGoalClick(goal))}>{goal.get("name")}</button>
 			{"  "} 
-			{goal.get("state")}
+			{`state: ${goal.get("state")}`}
 			{"  "} 
-			{goal.get("lastDone")}
+			{`doneToday: ${doneToday}`}
+			{"  "} 
+			{`lastDone: ${goal.get("lastDone")}`}
 		</div>
 		
 	);

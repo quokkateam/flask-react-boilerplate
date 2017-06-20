@@ -75,10 +75,7 @@ class App extends Component {
 			this.updateGoal(goal, "clickPendingConfirmation")
 			axios.post(`/api/goal/${goal.get("goalid")}/markdone`)
 				.then((res) => {
-					axios.get(`/api/goal/${goal.get("goalid")}`)
-						.then((res) => {
-							this.updateGoalFromApi(res);
-						})
+					this.updateGoalFromApi(res);
 					setTimeout(() => {
 						this.updateGoal(goal, "waitingForClick");
 					}, 1000);
