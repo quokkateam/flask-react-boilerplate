@@ -122,6 +122,7 @@ ENV/
 # mkdocs documentation
 /site
 
+# PyCharm stuff
 .idea/
 
 # End of https://www.gitignore.io/api/python
