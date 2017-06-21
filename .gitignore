@@ -125,4 +125,7 @@ ENV/
 # PyCharm stuff
 .idea/
 
+# config vars
+api/configs/vars.py
+
 # End of https://www.gitignore.io/api/python
